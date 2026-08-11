@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TRAINING_DAYS, TOTAL_SESSIONS, sessionIndex, sessionAt } from '../assets/logic.js';
+import {
+  TRAINING_DAYS, TOTAL_SESSIONS, sessionIndex, sessionAt,
+  progress, nextSession, backlog, weekProgress, STAGES, stageOf, lastDone
+} from '../assets/logic.js';
 
 test('훈련일은 월~토 6일이고 총 36세션이다', () => {
   assert.deepEqual(TRAINING_DAYS, ['월','화','수','목','금','토']);
@@ -39,4 +42,89 @@ test('36개 순번 전부 왕복 변환된다', () => {
     const s = sessionAt(i);
     assert.equal(sessionIndex(s.w, s.day), i, `${i}번에서 왕복 실패`);
   }
+});
+
+/* 테스트용 done 만들기 — 순번 배열을 받아 완료 기록으로 바꾼다 */
+const mk = (...idx) => Object.fromEntries(
+  idx.map((i, n) => [String(i), { at: 1000 + n, seq: n + 1 }])
+);
+
+test('progress는 완료 수와 비율을 준다', () => {
+  assert.deepEqual(progress({}), { count: 0, total: 36, pct: 0 });
+  assert.deepEqual(progress(mk(0, 1, 2)), { count: 3, total: 36, pct: 3 / 36 });
+  const all = mk(...Array.from({ length: 36 }, (_, i) => i));
+  assert.deepEqual(progress(all), { count: 36, total: 36, pct: 1 });
+});
+
+test('progress는 범위 밖 키를 세지 않는다', () => {
+  assert.equal(progress({ '36': {}, '-1': {}, 'abc': {} }).count, 0);
+});
+
+test('nextSession은 가장 작은 미완료를 준다', () => {
+  assert.equal(nextSession({}), 0);
+  assert.equal(nextSession(mk(0, 1, 2)), 3);
+  assert.equal(nextSession(mk(8)), 0, '앞이 비었으면 그쪽이 먼저다');
+  const all = mk(...Array.from({ length: 36 }, (_, i) => i));
+  assert.equal(nextSession(all), null, '전부 완료면 null');
+});
+
+test('backlog — 하나도 안 했으면 비어 있다', () => {
+  assert.deepEqual(backlog({}), []);
+});
+
+test('backlog — 앞에서부터 순서대로 했으면 비어 있다', () => {
+  assert.deepEqual(backlog(mk(0, 1, 2, 3)), []);
+});
+
+test('backlog — 건너뛴 것이 밀린 훈련이다', () => {
+  assert.deepEqual(backlog(mk(0, 1, 2, 3, 5, 6, 7)), [4]);
+  assert.deepEqual(backlog(mk(0, 8)), [1, 2, 3, 4, 5, 6, 7]);
+});
+
+test('backlog — 마지막 하나만 했으면 앞 35개가 전부 밀린다', () => {
+  assert.deepEqual(backlog(mk(35)), Array.from({ length: 35 }, (_, i) => i));
+});
+
+test('backlog — 전부 완료면 비어 있다', () => {
+  const all = mk(...Array.from({ length: 36 }, (_, i) => i));
+  assert.deepEqual(backlog(all), []);
+});
+
+test('weekProgress는 주차별 완료율을 준다', () => {
+  assert.deepEqual(weekProgress({}), [0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(weekProgress(mk(0, 1, 2)), [0.5, 0, 0, 0, 0, 0]);
+  assert.deepEqual(weekProgress(mk(6, 7, 8, 9, 10, 11)), [0, 1, 0, 0, 0, 0]);
+  assert.deepEqual(weekProgress(mk(35)), [0, 0, 0, 0, 0, 1 / 6]);
+});
+
+test('STAGES는 0~36을 빈틈없이 덮는다', () => {
+  assert.equal(STAGES.length, 8);
+  for (let c = 0; c <= 36; c++) {
+    const hit = STAGES.filter(s => c >= s.from && c <= s.to);
+    assert.equal(hit.length, 1, `완료 ${c}개가 ${hit.length}개 단계에 걸린다`);
+  }
+});
+
+test('stageOf는 경계에서 정확하다', () => {
+  const lv = c => stageOf(c).level;
+  assert.equal(lv(0), 0);
+  assert.equal(lv(1), 1);   assert.equal(lv(6), 1);
+  assert.equal(lv(7), 2);   assert.equal(lv(12), 2);
+  assert.equal(lv(13), 3);  assert.equal(lv(18), 3);
+  assert.equal(lv(19), 4);  assert.equal(lv(24), 4);
+  assert.equal(lv(25), 5);  assert.equal(lv(30), 5);
+  assert.equal(lv(31), 6);  assert.equal(lv(35), 6);
+  assert.equal(lv(36), 7);
+  assert.equal(stageOf(36).name, '울트라맨 · 완전체');
+});
+
+test('lastDone은 가장 나중에 완료한 세션을 준다', () => {
+  assert.equal(lastDone({}), null);
+  const d = { '3': { at: 500, seq: 1 }, '9': { at: 900, seq: 2 } };
+  assert.deepEqual(lastDone(d), { index: 9, at: 900 });
+});
+
+test('lastDone은 seq가 없으면 가장 큰 순번을 대신 쓴다', () => {
+  const migrated = { '3': { at: null, seq: null }, '9': { at: null, seq: null } };
+  assert.deepEqual(lastDone(migrated), { index: 9, at: null });
 });
