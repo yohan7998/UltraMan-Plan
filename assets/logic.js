@@ -90,3 +90,24 @@ export function lastDone(done) {
   if (!best) return { index: idx[idx.length - 1], at: null };
   return { index: best.index, at: best.at };
 }
+
+/* 구 스키마: { done: { "0-월": true }, rm, scaleOn }
+   완료 시각과 순서를 알 수 없으므로 null로 둔다 */
+export function migrateV2(v2) {
+  const out = { v: 3, done: {}, rm: {}, scaleOn: false };
+  if (!v2 || typeof v2 !== 'object') return out;
+
+  const src = (v2.done && typeof v2.done === 'object') ? v2.done : {};
+  for (const key of Object.keys(src)) {
+    if (!src[key]) continue;
+    const m = /^(\d+)-(.+)$/.exec(key);
+    if (!m) continue;
+    const i = sessionIndex(Number(m[1]), m[2]);
+    if (i < 0) continue;
+    out.done[String(i)] = { at: null, seq: null };
+  }
+
+  if (v2.rm && typeof v2.rm === 'object') out.rm = Object.assign({}, v2.rm);
+  out.scaleOn = !!v2.scaleOn;
+  return out;
+}

@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   TRAINING_DAYS, TOTAL_SESSIONS, sessionIndex, sessionAt,
-  progress, nextSession, backlog, weekProgress, STAGES, stageOf, lastDone
+  progress, nextSession, backlog, weekProgress, STAGES, stageOf, lastDone,
+  migrateV2
 } from '../assets/logic.js';
 
 test('훈련일은 월~토 6일이고 총 36세션이다', () => {
@@ -133,4 +134,33 @@ test('비표준 키는 progress와 backlog가 모두 무시한다', () => {
   const nonCanonical = { '07': {}, '10': {} };
   assert.equal(progress(nonCanonical).count, 1, '비표준 "07"은 무시하고 "10"만 센다');
   assert.deepEqual(backlog(nonCanonical), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], '세션 7은 완료되지 않음');
+});
+
+test('migrateV2는 주차-요일 키를 순번으로 바꾼다', () => {
+  const v2 = { done: { '0-월': true, '2-수': true }, rm: { '스쿼트': 100 }, scaleOn: true };
+  const out = migrateV2(v2);
+  assert.equal(out.v, 3);
+  assert.deepEqual(Object.keys(out.done).sort(), ['0', '14']);
+  assert.deepEqual(out.done['0'], { at: null, seq: null });
+  assert.deepEqual(out.rm, { '스쿼트': 100 });
+  assert.equal(out.scaleOn, true);
+});
+
+test('migrateV2는 false 값을 완료로 보지 않는다', () => {
+  assert.deepEqual(migrateV2({ done: { '0-월': false } }).done, {});
+});
+
+test('migrateV2는 손상된 입력에 빈 상태를 준다', () => {
+  for (const bad of [null, undefined, 'x', 42, {}, { done: 'x' }]) {
+    const out = migrateV2(bad);
+    assert.equal(out.v, 3);
+    assert.deepEqual(out.done, {});
+    assert.deepEqual(out.rm, {});
+    assert.equal(out.scaleOn, false);
+  }
+});
+
+test('migrateV2는 알 수 없는 키를 버린다', () => {
+  const out = migrateV2({ done: { '0-일': true, '9-월': true, '쓰레기': true } });
+  assert.deepEqual(out.done, {}, '일요일·7주차 이상·형식 불명은 모두 버린다');
 });

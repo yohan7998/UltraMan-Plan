@@ -1,13 +1,103 @@
 import { IMG } from './images.js';
 import { PARTS, WEEKS, RULES, RM_BASE, RM_LIFT, EXMETA } from './data.js';
+import {
+  sessionIndex, sessionAt, progress, nextSession, backlog,
+  weekProgress, stageOf, lastDone, migrateV2
+} from './logic.js';
 
 const DAYS=["일","월","화","수","목","금","토"];
 const state={stack:[{v:"home"}],lastWeek:0,done:{},rm:Object.assign({},RM_BASE),scaleOn:false};
-const store={
-  async load(){try{const r=await window.storage.get('geoinhwa:v2');if(r&&r.value){const o=JSON.parse(r.value);
-    state.done=o.done||{};if(o.rm)state.rm=Object.assign({},RM_BASE,o.rm);state.scaleOn=!!o.scaleOn;}}catch(e){}},
-  async save(){try{await window.storage.set('geoinhwa:v2',JSON.stringify({done:state.done,rm:state.rm,scaleOn:state.scaleOn}));}catch(e){}}
+
+const KEY = 'geoinhwa:v3';
+const KEY_V2 = 'geoinhwa:v2';
+const PROBE = 'geoinhwa:probe';
+let storageOk = true;
+
+function showStorageWarning(msg) {
+  const el = document.getElementById('warn');
+  el.textContent = msg || '⚠ 이 브라우저에서는 기록이 저장되지 않습니다. (사파리 시크릿 모드 등) 기록이 남지 않으니 확인 후 사용하세요.';
+  el.hidden = false;
+}
+
+/* 실제로 쓰고 되읽어 확인한다. 존재 여부만 보면 시크릿 모드를 못 잡는다 */
+function probeStorage() {
+  try {
+    localStorage.setItem(PROBE, '1');
+    const ok = localStorage.getItem(PROBE) === '1';
+    localStorage.removeItem(PROBE);
+    return ok;
+  } catch (e) {
+    console.warn('저장소 점검 실패:', e);
+    return false;
+  }
+}
+
+function applyState(o) {
+  state.done = (o && o.done && typeof o.done === 'object') ? o.done : {};
+  state.rm = Object.assign({}, RM_BASE, (o && o.rm) || {});
+  state.scaleOn = !!(o && o.scaleOn);
+}
+
+const store = {
+  load() {
+    storageOk = probeStorage();
+    if (!storageOk) { showStorageWarning(); return; }
+
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      try { applyState(JSON.parse(raw)); }
+      catch (e) {
+        console.warn('v3 기록 파싱 실패:', e);
+        showStorageWarning('⚠ 저장된 기록을 읽을 수 없습니다. 1RM 화면의 기록 불러오기로 복원하세요.');
+      }
+      return;
+    }
+
+    const rawV2 = localStorage.getItem(KEY_V2);
+    if (rawV2) {
+      try {
+        applyState(migrateV2(JSON.parse(rawV2)));
+        store.save();
+        console.info('v2 기록을 v3로 옮겼습니다.');
+      } catch (e) {
+        console.warn('v2 기록을 옮기지 못했습니다. 새로 시작합니다:', e);
+      }
+    }
+  },
+
+  save() {
+    if (!storageOk) return;
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        v: 3, done: state.done, rm: state.rm, scaleOn: state.scaleOn
+      }));
+    } catch (e) {
+      storageOk = false;
+      console.warn('저장 실패:', e);
+      showStorageWarning('⚠ 기록을 저장하지 못했습니다: ' + e.message);
+    }
+  }
 };
+
+function nextSeq() {
+  let m = 0;
+  for (const k of Object.keys(state.done)) {
+    const s = state.done[k] && state.done[k].seq;
+    if (typeof s === 'number' && s > m) m = s;
+  }
+  return m + 1;
+}
+
+function toggleDone(i) {
+  const k = String(i);
+  if (Object.prototype.hasOwnProperty.call(state.done, k)) delete state.done[k];
+  else state.done[k] = { at: Date.now(), seq: nextSeq() };
+  store.save();
+  return Object.prototype.hasOwnProperty.call(state.done, k);
+}
+
+const isDone = i => Object.prototype.hasOwnProperty.call(state.done, String(i));
+
 const stack=document.getElementById('stack');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const floor25=v=>Math.max(2.5,Math.floor(v/2.5)*2.5);
@@ -75,7 +165,10 @@ function vWeek(wi){
     ${w.term.map(t=>`<p><b>${t[0]}</b> : ${esc(t[1])}</p>`).join('')}</div>
   <div class="days">
     ${DAYS.map((d,i)=>{
-      const rest=d==="일", key=wi+'-'+d, done=!!state.done[key], part=PARTS[d][0];
+      const rest = d === '일';
+      const idx = rest ? -1 : sessionIndex(wi, d);
+      const done = idx >= 0 && isDone(idx);
+      const part=PARTS[d][0];
       const mains=rest?'휴식':w.days[d].flat().filter(b=>b.k==='main').map(b=>b.ex).join(' · ');
       return `<button class="day ${rest?'rest':''} ${done?'done':''}" ${rest?'disabled':`data-go="day" data-w="${wi}" data-d="${d}"`} style="animation-delay:${i*35}ms">
         <span class="day-d">${d}</span>
@@ -110,7 +203,8 @@ function blockHTML(b){
 }
 function vDay(wi,d){
   const w=WEEKS[wi], groups=w.days[d], names=PARTS[d][1];
-  const key=wi+'-'+d, done=!!state.done[key], di=DAYS.indexOf(d);
+  const idx = sessionIndex(wi, d), done = isDone(idx);
+  const di=DAYS.indexOf(d);
   const prev=di>1?DAYS[di-1]:null, next=di<6?DAYS[di+1]:null;
   const notes=(w.notes&&w.notes[d])||[];
   return `
@@ -123,7 +217,7 @@ function vDay(wi,d){
   </div>
   ${notes.map(n=>`<div class="note">${esc(n)}</div>`).join('')}
   ${groups.map((g,gi)=>`<div class="grouphead">${esc(names[gi]||'')}</div>${g.map(b=>blockHTML(b)).join('')}`).join('')}
-  <div class="donebar"><button class="donebtn ${done?'on':''}" data-done="${key}">${done?'훈련 완료됨 · 다시 누르면 해제':'오늘 훈련 완료로 표시'}</button></div>
+  <div class="donebar"><button class="donebtn ${done?'on':''}" data-done="${idx}">${done?'훈련 완료됨 · 다시 누르면 해제':'오늘 훈련 완료로 표시'}</button></div>
   <div class="pager">
     <button ${prev?`data-go="day" data-w="${wi}" data-d="${prev}" data-dir="l"`:'disabled'}>← ${prev||''}요일</button>
     <button ${next?`data-go="day" data-w="${wi}" data-d="${next}"`:'disabled'}>${next||''}요일 →</button>
@@ -205,9 +299,11 @@ document.addEventListener('click',e=>{
   const th=e.target.closest('[data-ex]');
   if(th){openSheet(th.dataset.ex,th.dataset.tempo||'');return}
   const dn=e.target.closest('[data-done]');
-  if(dn){const k=dn.dataset.done;state.done[k]=!state.done[k];store.save();
-    dn.classList.toggle('on',state.done[k]);
-    dn.textContent=state.done[k]?'훈련 완료됨 · 다시 누르면 해제':'오늘 훈련 완료로 표시';return;}
+  if(dn){
+    const on=toggleDone(Number(dn.dataset.done));
+    dn.classList.toggle('on',on);
+    dn.textContent=on?'훈련 완료됨 · 다시 누르면 해제':'오늘 훈련 완료로 표시';
+    return;}
   const g=e.target.closest('[data-go]');
   if(g&&!busy){const v=g.dataset.go;
     if(v==='week'){state.lastWeek=+g.dataset.w;push({v:'week',w:+g.dataset.w})}
@@ -271,5 +367,5 @@ function openSheet(name,tempoTag){
 function closeSheet(){sheet.classList.remove('open')}
 sheet.addEventListener('click',e=>{if(e.target===sheet||e.target.classList.contains('grab'))closeSheet()});
 
-(async()=>{await store.load();paint('none')})();
+store.load(); paint('none');
 
