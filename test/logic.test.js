@@ -128,3 +128,9 @@ test('lastDone은 seq가 없으면 가장 큰 순번을 대신 쓴다', () => {
   const migrated = { '3': { at: null, seq: null }, '9': { at: null, seq: null } };
   assert.deepEqual(lastDone(migrated), { index: 9, at: null });
 });
+
+test('비표준 키는 progress와 backlog가 모두 무시한다', () => {
+  const nonCanonical = { '07': {}, '10': {} };
+  assert.equal(progress(nonCanonical).count, 1, '비표준 "07"은 무시하고 "10"만 센다');
+  assert.deepEqual(backlog(nonCanonical), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], '세션 7은 완료되지 않음');
+});

@@ -25,6 +25,7 @@ const has = (done, i) => Object.prototype.hasOwnProperty.call(done, String(i));
 function doneIndices(done) {
   if (!done || typeof done !== 'object') return [];
   return Object.keys(done)
+    .filter(key => String(Number(key)) === key)
     .map(Number)
     .filter(n => Number.isInteger(n) && n >= 0 && n < TOTAL_SESSIONS)
     .sort((a, b) => a - b);
