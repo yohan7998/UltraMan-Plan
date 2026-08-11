@@ -221,17 +221,26 @@ function vWeek(wi){
   <div class="termbar"><b>용어설명</b>
     ${w.term.map(t=>`<p><b>${t[0]}</b> : ${esc(t[1])}</p>`).join('')}</div>
   <div class="days">
-    ${DAYS.map((d,i)=>{
-      const rest = d === '일';
-      const idx = rest ? -1 : sessionIndex(wi, d);
-      const done = idx >= 0 && isDone(idx);
-      const part=PARTS[d][0];
-      const mains=rest?'휴식':w.days[d].flat().filter(b=>b.k==='main').map(b=>b.ex).join(' · ');
-      return `<button class="day ${rest?'rest':''} ${done?'done':''}" ${rest?'disabled':`data-go="day" data-w="${wi}" data-d="${d}"`} style="animation-delay:${i*35}ms">
-        <span class="day-d">${d}</span>
-        <span class="day-b"><b>${esc(part)}</b><span>${esc(mains)}</span></span>
-        <span class="chev">${rest?'':IC.chev}</span></button>`;
-    }).join('')}
+    ${(() => {
+      const next = nextSession(state.done);
+      const back = backlog(state.done);
+      return DAYS.map((d, i) => {
+        const rest = d === '일';
+        const idx = rest ? -1 : sessionIndex(wi, d);
+        const done = idx >= 0 && isDone(idx);
+        const late = idx >= 0 && back.includes(idx);
+        const isNext = idx >= 0 && idx === next;
+        const part = PARTS[d][0];
+        const mains = rest ? '휴식' : w.days[d].flat().filter(b => b.k === 'main').map(b => b.ex).join(' · ');
+        const at = done ? (state.done[String(idx)].at || 0) : 0;
+        return `<button class="day ${rest ? 'rest' : ''} ${done ? 'done' : ''} ${late ? 'late' : ''} ${isNext ? 'next' : ''}"
+          ${rest ? 'disabled' : `data-go="day" data-w="${wi}" data-d="${d}"`} style="animation-delay:${i * 35}ms">
+          <span class="day-d">${d}</span>
+          <span class="day-b"><b>${esc(part)}</b><span>${esc(mains)}</span></span>
+          <span class="day-s">${done ? (at ? esc(fmtWhen(at)) : '완료') : late ? '밀림' : isNext ? '다음' : ''}</span>
+          <span class="chev">${rest ? '' : IC.chev}</span></button>`;
+      }).join('');
+    })()}
   </div>`;
 }
 function setRow(no,s,exName){
@@ -261,6 +270,8 @@ function blockHTML(b){
 function vDay(wi,d){
   const w=WEEKS[wi], groups=w.days[d], names=PARTS[d][1];
   const idx = sessionIndex(wi, d), done = isDone(idx);
+  const late = backlog(state.done).includes(idx);
+  const at = done ? (state.done[String(idx)].at || 0) : 0;
   const di=DAYS.indexOf(d);
   const prev=di>1?DAYS[di-1]:null, next=di<6?DAYS[di+1]:null;
   const notes=(w.notes&&w.notes[d])||[];
@@ -272,9 +283,13 @@ function vDay(wi,d){
     <h2>${esc(PARTS[d][0])}</h2>
     <div class="m">메인 3분 이상 휴식 · 보조A 2분 이상 휴식</div>
   </div>
+  ${late ? '<div class="latebar">이 훈련은 밀려 있습니다. 지나쳤지만 아직 완료하지 않았습니다.</div>' : ''}
   ${notes.map(n=>`<div class="note">${esc(n)}</div>`).join('')}
   ${groups.map((g,gi)=>`<div class="grouphead">${esc(names[gi]||'')}</div>${g.map(b=>blockHTML(b)).join('')}`).join('')}
-  <div class="donebar"><button class="donebtn ${done?'on':''}" data-done="${idx}">${done?'훈련 완료됨 · 다시 누르면 해제':'오늘 훈련 완료로 표시'}</button></div>
+  <div class="donebar">
+    <button class="donebtn ${done ? 'on' : ''}" data-done="${idx}">${done ? '훈련 완료됨 · 다시 누르면 해제' : '오늘 훈련 완료로 표시'}</button>
+    ${at ? `<div class="doneat">${esc(fmtWhen(at))} 완료</div>` : ''}
+  </div>
   <div class="pager">
     <button ${prev?`data-go="day" data-w="${wi}" data-d="${prev}" data-dir="l"`:'disabled'}>← ${prev||''}요일</button>
     <button ${next?`data-go="day" data-w="${wi}" data-d="${next}"`:'disabled'}>${next||''}요일 →</button>
