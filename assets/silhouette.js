@@ -4,6 +4,12 @@ import { STAGES, stageOf, TOTAL_SESSIONS } from './logic.js';
 const bulkOf = level => 1 + level * 0.085;
 const FINAL_BULK = bulkOf(7);
 
+/* 렌더마다 clipPath id를 유일하게 만든다.
+   화면 전환 중 옛/새 뷰가 겹치는 300ms 동안 두 개의 sil-fill이 동시에
+   존재할 수 있는데, id가 같으면 SVG는 문서 순서상 먼저 오는 요소로
+   url(#...)를 해석해 버려서 새 뷰가 옛 채움 비율을 그대로 물려받는다. */
+let uidSeq = 0;
+
 /* 파라메트릭 인체 실루엣. b가 클수록 어깨·골반이 넓어진다 */
 function figure(b) {
   const cx = 60;
@@ -34,10 +40,11 @@ export function silhouetteSVG(count) {
   const cur = figure(bulkOf(st.level));
   const ghost = figure(FINAL_BULK);
   const fillY = 140 - 140 * pct;          // 아래에서 위로 차오른다
+  const clipId = 'sil-fill-' + (++uidSeq);
 
   return `<svg viewBox="0 0 120 140" role="img" aria-label="거인화 ${st.level}단계 ${st.name}, ${count}/36 완료">
     <defs>
-      <clipPath id="sil-fill"><rect x="0" y="${fillY}" width="120" height="${140 - fillY}"/></clipPath>
+      <clipPath id="${clipId}"><rect x="0" y="${fillY}" width="120" height="${140 - fillY}"/></clipPath>
     </defs>
     <!-- 최종형 윤곽: 남은 거리 -->
     <g fill="none" stroke="rgba(0,0,0,.13)" stroke-width="1" stroke-dasharray="3 3">
@@ -47,8 +54,8 @@ export function silhouetteSVG(count) {
     <!-- 현재 단계: 미충전 -->
     ${figureMarkup(cur, 'sil-empty')}
     <!-- 현재 단계: 진행률만큼 충전 -->
-    <g clip-path="url(#sil-fill)">${figureMarkup(cur, 'sil-full')}</g>
-    ${st.level >= 5 ? `<g class="sil-glow" clip-path="url(#sil-fill)">${figureMarkup(cur, 'sil-full')}</g>` : ''}
+    <g clip-path="url(#${clipId})">${figureMarkup(cur, 'sil-full')}</g>
+    ${st.level >= 5 ? `<g class="sil-glow" clip-path="url(#${clipId})">${figureMarkup(cur, 'sil-full')}</g>` : ''}
   </svg>`;
 }
 
