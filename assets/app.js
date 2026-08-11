@@ -127,26 +127,82 @@ const IC={
  play:'<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
 };
 
-function vHome(){
-  const pct=[62,68,75,81,88,94];
+/* "3주차 수요일 · 하체후면/팔" */
+function sessionLabel(i) {
+  const s = sessionAt(i);
+  if (!s) return '';
+  return `${s.w + 1}주차 ${s.day}요일 · ${PARTS[s.day][0]}`;
+}
+
+function fmtWhen(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function vHome() {
+  const pr = progress(state.done);
+  const st = stageOf(pr.count);
+  const next = nextSession(state.done);
+  const allBack = backlog(state.done);
+  const nextIsLate = next !== null && allBack.includes(next);
+  const back = allBack.filter(i => i !== next);   /* 다음 훈련 카드와 중복 표시하지 않는다 */
+  const wp = weekProgress(state.done);
+  const last = lastDone(state.done);
+
+  const pctTxt = (pr.pct * 100).toFixed(1);
+
   return `
   <div class="top"><div><div class="top-s">SURVEY CORPS · 105</div></div></div>
+
   <div class="hero">
     <div class="stamp">6주 블록<b>선형 주기화</b></div>
     <div class="eyebrow">TRAINING ORDER</div>
     <h1>거인화<br><em>프로그램</em></h1>
-    <p class="sub">주 6일 · 일요일 휴식. 1주차는 느린 템포로 자세를 만들고, 6주차에 최고 중량 1회로 마무리한다.</p>
   </div>
-  <div class="ladder">${pct.map((p,i)=>`<i style="height:${p}%;animation-delay:${i*55}ms"><b>${i+1}주</b></i>`).join('')}</div>
+
+  <div class="status">
+    <div id="silhouette"></div>
+    <div class="st-name"><b>${st.level}단계</b><span>${esc(st.name)}</span></div>
+    <div class="st-bar"><i style="width:${pr.pct * 100}%"></i></div>
+    <div class="st-num"><b>${pr.count}</b><span>/ ${pr.total}</span><em>${pctTxt}%</em></div>
+    ${last && last.at ? `<div class="st-last">마지막 훈련 ${fmtWhen(last.at)}</div>` : ''}
+  </div>
+
+  ${next === null ? `
+  <div class="nextcard done"><span class="lb">완주</span>
+    <b>36세션 전부 완료</b><span class="dt">울트라맨 · 완전체</span></div>` : `
+  <button class="nextcard" data-go="day" data-w="${sessionAt(next).w}" data-d="${sessionAt(next).day}">
+    <span class="lb">${nextIsLate ? '▶ 다음 훈련 · 밀림' : '▶ 다음 훈련'}</span>
+    <b>${esc(sessionLabel(next))}</b>
+    <span class="dt">${esc(WEEKS[sessionAt(next).w].focus)}</span>
+  </button>`}
+
+  ${back.length ? `
+  <div class="slab warnslab"><h2>⚠ 밀린 훈련</h2><span>${back.length}</span></div>
+  <div class="backlog">
+    ${back.map(i => `<button class="bl" data-go="day" data-w="${sessionAt(i).w}" data-d="${sessionAt(i).day}">
+      <span class="dot"></span><b>${esc(sessionLabel(i))}</b><span class="chev">${IC.chev}</span></button>`).join('')}
+  </div>` : ''}
+
+  <div class="slab"><h2>주차별 달성</h2><span>${pr.count} / ${pr.total}</span></div>
+  <div class="ladder">${wp.map((p, i) =>
+    `<i class="${p === 1 ? 'full' : ''}" style="height:${Math.max(p * 100, 4)}%;animation-delay:${i * 55}ms"><b>${i + 1}주</b></i>`
+  ).join('')}</div>
+
   <div class="slab"><h2>주차 선택</h2><span>6 WEEKS</span></div>
   <div class="weeks">
-    ${WEEKS.map((w,i)=>`
-      <button class="wk ${w.n===6?'peak':''}" data-go="week" data-w="${i}" style="animation-delay:${i*40}ms">
+    ${WEEKS.map((w, i) => {
+      const c = Math.round(wp[i] * 6);
+      return `
+      <button class="wk ${w.n === 6 ? 'peak' : ''} ${c === 6 ? 'cleared' : ''}" data-go="week" data-w="${i}" style="animation-delay:${i * 40}ms">
         <span class="wk-n">${w.n}<small>주차</small></span>
-        <span class="wk-b"><b>${esc(w.focus)}</b><span>${w.term.map(t=>t[0]+' · '+t[1]).join(' / ')}</span></span>
-        <span class="tag">${w.term.map(t=>t[0]).join('+')}</span>
-      </button>`).join('')}
+        <span class="wk-b"><b>${esc(w.focus)}</b><span>${w.term.map(t => t[0] + ' · ' + t[1]).join(' / ')}</span></span>
+        <span class="tag">${c}/6</span>
+      </button>`;
+    }).join('')}
   </div>
+
   <div class="slab"><h2>훈련 전 확인</h2></div>
   <div class="tiles">
     <button class="tile" data-go="rules"><span class="ic">${IC.doc}</span><b>훈련 수칙</b><span>13개 항목 · 전원 필독</span></button>
