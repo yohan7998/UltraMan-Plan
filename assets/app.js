@@ -4,6 +4,7 @@ import {
   sessionIndex, sessionAt, progress, nextSession, backlog,
   weekProgress, stageOf, lastDone, migrateV2
 } from './logic.js';
+import { silhouetteSVG, stageSheetHTML } from './silhouette.js';
 
 const DAYS=["일","월","화","수","목","금","토"];
 const state={stack:[{v:"home"}],lastWeek:0,done:{},rm:Object.assign({},RM_BASE),scaleOn:false};
@@ -162,7 +163,7 @@ function vHome() {
   </div>
 
   <div class="status">
-    <div id="silhouette"></div>
+    <div id="silhouette" data-stage>${silhouetteSVG(pr.count)}</div>
     <div class="st-name"><b>${st.level}단계</b><span>${esc(st.name)}</span></div>
     <div class="st-bar"><i style="width:${pr.pct * 100}%"></i></div>
     <div class="st-num"><b>${pr.count}</b><span>/ ${pr.total}</span><em>${pctTxt}%</em></div>
@@ -346,6 +347,11 @@ function back(){if(state.stack.length>1){state.stack.pop();paint('back')}}
 
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-back]')){back();return}
+  if(e.target.closest('[data-stage]')){
+    sheetIn.innerHTML=stageSheetHTML(progress(state.done).count);
+    sheet.classList.add('open');
+    return;
+  }
   const nav=e.target.closest('[data-nav]');
   if(nav){const v=nav.dataset.nav;
     if(v==='home')replaceTo({v:'home'});
