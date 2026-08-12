@@ -195,7 +195,7 @@ function vHome() {
 
   ${next === null ? `
   <div class="nextcard done"><span class="lb">완주</span>
-    <b>36세션 전부 완료</b><span class="dt">울트라맨 · 완전체</span></div>` : `
+    <b>36회차 전부 완료</b><span class="dt">울트라맨 · 완전체</span></div>` : `
   <button class="nextcard" data-go="day" data-w="${sessionAt(next).w}" data-d="${sessionAt(next).day}">
     <span class="lb">${nextIsLate ? '▶ 다음 훈련 · 밀림' : '▶ 다음 훈련'}</span>
     <b>${esc(sessionLabel(next))}</b>

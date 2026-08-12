@@ -4,8 +4,8 @@ import { STAGES, stageOf, TOTAL_SESSIONS } from './logic.js?v=3';
    들어오는 쪽이 나가는 쪽의 정의를 참조하므로 호출마다 고유 id를 만든다. */
 let uidSeq = 0;
 
-const TONE = ['#9A9086', '#B4441F', '#BB5220', '#C56420',
-              '#D07A22', '#DC9128', '#E8AB33', '#F2C64C'];
+const TONE = ['#9A9086', '#B4441F', '#AE3B1B', '#A73317',
+              '#A02A13', '#98220F', '#8F1A0B', '#851207'];
 
 const P = (x, y) => `${x.toFixed(1)} ${y.toFixed(1)}`;
 
