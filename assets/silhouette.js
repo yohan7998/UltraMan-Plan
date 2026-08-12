@@ -108,7 +108,7 @@ export function silhouetteSVG(count) {
   const uid = ++uidSeq;
   const b = bust(L);
   const body = `<path d="${b.sh}"/><circle cx="${b.cx}" cy="${b.hy}" r="${b.hr}"/><path d="${hair(L, b)}"/>`;
-  return `<svg viewBox="0 0 120 140" role="img" aria-label="${st.rank} ${L}단계 ${st.name}, ${count}/${TOTAL_SESSIONS} 완료">
+  return `<svg viewBox="-24 -30 190 190" role="img" aria-label="${st.rank} ${L}단계 ${st.name}, ${count}/${TOTAL_SESSIONS} 완료">
     <defs>
       <radialGradient id="au${uid}" cx="50%" cy="68%" r="62%">
         <stop offset="0" stop-color="#F0B63C" stop-opacity=".9"/>
@@ -116,8 +116,9 @@ export function silhouetteSVG(count) {
         <stop offset="1" stop-color="#E8A02C" stop-opacity="0"/>
       </radialGradient>
     </defs>
-    ${aura(p, uid)}${bolts(p, L)}${sparks(count, L)}
+    ${aura(p, uid)}${bolts(p, L)}
     <g fill="${TONE[L]}">${body}</g>
+    ${sparks(count, L)}
   </svg>`;
 }
 

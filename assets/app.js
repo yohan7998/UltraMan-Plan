@@ -474,7 +474,7 @@ function bindRM(root){
     state.rm = Object.assign({}, RM_BASE, r.data.rm);
     state.scaleOn = r.data.scaleOn;
     store.save();
-    say(`${Object.keys(r.data.done).length}개 세션을 불러왔다.`);
+    say(`${Object.keys(r.data.done).length}개 회차를 불러왔다.`);
   });
 
   root.querySelector('#resetBtn').addEventListener('click', () => {
