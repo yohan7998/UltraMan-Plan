@@ -1,4 +1,4 @@
-import { STAGES, stageOf, TOTAL_SESSIONS } from './logic.js';
+import { STAGES, stageOf, TOTAL_SESSIONS } from './logic.js?v=3';
 
 /* 체격 배율 — 단계가 오를수록 커진다 */
 const bulkOf = level => 1 + level * 0.085;
