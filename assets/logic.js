@@ -61,14 +61,14 @@ export function weekProgress(done) {
 }
 
 export const STAGES = [
-  { level: 0, name: '인간',              from: 0,  to: 0  },
-  { level: 1, name: '각성',              from: 1,  to: 6  },
-  { level: 2, name: '경화',              from: 7,  to: 12 },
-  { level: 3, name: '변이',              from: 13, to: 18 },
-  { level: 4, name: '거인화',            from: 19, to: 24 },
-  { level: 5, name: '초대형',            from: 25, to: 30 },
-  { level: 6, name: '임계',              from: 31, to: 35 },
-  { level: 7, name: '울트라맨 · 완전체',  from: 36, to: 36 }
+  { level: 0, rank: '훈련병', name: '인간',              from: 0,  to: 0  },
+  { level: 1, rank: '신병',   name: '각성',              from: 1,  to: 6  },
+  { level: 2, rank: '정예병', name: '경화',              from: 7,  to: 12 },
+  { level: 3, rank: '분대장', name: '변이',              from: 13, to: 18 },
+  { level: 4, rank: '특무병', name: '거인화',            from: 19, to: 24 },
+  { level: 5, rank: '반장',   name: '초대형',            from: 25, to: 30 },
+  { level: 6, rank: '부단장', name: '임계',              from: 31, to: 35 },
+  { level: 7, rank: '단장',   name: '울트라맨 · 완전체',  from: 36, to: 36 }
 ];
 
 export function stageOf(count) {

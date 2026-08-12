@@ -1,12 +1,11 @@
-import { IMG } from './images.js?v=3';
-import { PARTS, WEEKS, RULES, RM_BASE, RM_LIFT, EXMETA } from './data.js?v=3';
+import { IMG } from './images.js?v=4';
+import { PARTS, WEEKS, RULES, RM_BASE, RM_LIFT, EXMETA } from './data.js?v=4';
 import {
-  sessionIndex, sessionAt, progress, nextSession, backlog,
+  TRAINING_DAYS, sessionIndex, sessionAt, progress, nextSession, backlog,
   weekProgress, stageOf, lastDone, migrateV2, validateBackup
-} from './logic.js?v=3';
-import { silhouetteSVG, stageSheetHTML } from './silhouette.js?v=3';
+} from './logic.js?v=4';
+import { silhouetteSVG, stageSheetHTML } from './silhouette.js?v=4';
 
-const DAYS=["일","월","화","수","목","금","토"];
 const state={stack:[{v:"home"}],lastWeek:0,done:{},rm:Object.assign({},RM_BASE),scaleOn:false};
 
 const KEY = 'geoinhwa:v3';
@@ -147,11 +146,14 @@ const IC={
  play:'<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'
 };
 
-/* "3주차 수요일 · 하체후면/팔" */
+/* 요일 키를 회차 번호로. 화면에는 회차만 나온다 */
+const slotNo = day => TRAINING_DAYS.indexOf(day) + 1;
+
+/* "3주차 3회차 · 하체후면/팔" */
 function sessionLabel(i) {
   const s = sessionAt(i);
   if (!s) return '';
-  return `${s.w + 1}주차 ${s.day}요일 · ${PARTS[s.day][0]}`;
+  return `${s.w + 1}주차 ${slotNo(s.day)}회차 · ${PARTS[s.day][0]}`;
 }
 
 function fmtWhen(ts) {
@@ -179,12 +181,13 @@ function vHome() {
     <div class="stamp">6주 블록<b>선형 주기화</b></div>
     <div class="eyebrow">TRAINING ORDER</div>
     <h1>거인화<br><em>프로그램</em></h1>
-    <p class="sub">주 6일 · 일요일 휴식. 1주차는 느린 템포로 자세를 만들고, 6주차에 최고 중량 1회로 마무리한다.</p>
+    <p class="sub">한 주 6회차 · 순서대로 진행한다. 1주차는 느린 템포로 자세를 만들고, 6주차에 최고 중량 1회로 마무리한다.</p>
   </div>
 
   <div class="status">
     <div id="silhouette" data-stage>${silhouetteSVG(pr.count)}</div>
-    <div class="st-name"><b>${st.level}단계</b><span>${esc(st.name)}</span></div>
+    <div class="st-name"><b>${esc(st.rank)}</b><i>${st.level}단계</i></div>
+    <div class="st-sub">${esc(st.name)}</div>
     <div class="st-bar"><i style="width:${pr.pct * 100}%"></i></div>
     <div class="st-num"><b>${pr.count}</b><span>/ ${pr.total}</span><em>${pctTxt}%</em></div>
     ${last && last.at ? `<div class="st-last">마지막 훈련 ${fmtWhen(last.at)}</div>` : ''}
@@ -192,7 +195,7 @@ function vHome() {
 
   ${next === null ? `
   <div class="nextcard done"><span class="lb">완주</span>
-    <b>36세션 전부 완료</b><span class="dt">울트라맨 · 완전체</span></div>` : `
+    <b>36회차 전부 완료</b><span class="dt">울트라맨 · 완전체</span></div>` : `
   <button class="nextcard" data-go="day" data-w="${sessionAt(next).w}" data-d="${sessionAt(next).day}">
     <span class="lb">${nextIsLate ? '▶ 다음 훈련 · 밀림' : '▶ 다음 훈련'}</span>
     <b>${esc(sessionLabel(next))}</b>
@@ -244,21 +247,19 @@ function vWeek(wi){
     ${(() => {
       const next = nextSession(state.done);
       const back = backlog(state.done);
-      return DAYS.map((d, i) => {
-        const rest = d === '일';
-        const idx = rest ? -1 : sessionIndex(wi, d);
-        const done = idx >= 0 && isDone(idx);
-        const late = idx >= 0 && back.includes(idx);
-        const isNext = idx >= 0 && idx === next;
-        const part = PARTS[d][0];
-        const mains = rest ? '휴식' : w.days[d].flat().filter(b => b.k === 'main').map(b => b.ex).join(' · ');
+      return TRAINING_DAYS.map((d, i) => {
+        const idx = sessionIndex(wi, d);
+        const done = isDone(idx);
+        const late = back.includes(idx);
+        const isNext = idx === next;
+        const mains = w.days[d].flat().filter(b => b.k === 'main').map(b => b.ex).join(' · ');
         const at = done ? (state.done[String(idx)].at || 0) : 0;
-        return `<button class="day ${rest ? 'rest' : ''} ${done ? 'done' : ''} ${late ? 'late' : ''} ${isNext ? 'next' : ''}"
-          ${rest ? 'disabled' : `data-go="day" data-w="${wi}" data-d="${d}"`} style="animation-delay:${i * 35}ms">
-          <span class="day-d">${d}</span>
-          <span class="day-b"><b>${esc(part)}</b><span>${esc(mains)}</span></span>
+        return `<button class="day ${done ? 'done' : ''} ${late ? 'late' : ''} ${isNext ? 'next' : ''}"
+          data-go="day" data-w="${wi}" data-d="${d}" style="animation-delay:${i * 35}ms">
+          <span class="day-d">${i + 1}</span>
+          <span class="day-b"><b>${esc(PARTS[d][0])}</b><span>${esc(mains)}</span></span>
           <span class="day-s">${done ? (at ? esc(fmtWhen(at)) : '완료') : late ? '밀림' : isNext ? '다음' : ''}</span>
-          <span class="chev">${rest ? '' : IC.chev}</span></button>`;
+          <span class="chev">${IC.chev}</span></button>`;
       }).join('');
     })()}
   </div>`;
@@ -292,12 +293,13 @@ function vDay(wi,d){
   const idx = sessionIndex(wi, d), done = isDone(idx);
   const late = backlog(state.done).includes(idx);
   const at = done ? (state.done[String(idx)].at || 0) : 0;
-  const di=DAYS.indexOf(d);
-  const prev=di>1?DAYS[di-1]:null, next=di<6?DAYS[di+1]:null;
+  const di = TRAINING_DAYS.indexOf(d);
+  const prev = di > 0 ? TRAINING_DAYS[di - 1] : null;
+  const next2 = di < 5 ? TRAINING_DAYS[di + 1] : null;
   const notes=(w.notes&&w.notes[d])||[];
   return `
   <div class="top"><button class="back" data-back>${IC.arrow}</button>
-    <div><div class="top-s">WEEK ${w.n} · ${d}요일</div><div class="top-t">${esc(PARTS[d][0])}</div></div></div>
+    <div><div class="top-s">WEEK ${w.n} · ${slotNo(d)}회차</div><div class="top-t">${esc(PARTS[d][0])}</div></div></div>
   <div class="dayhead">
     <div class="k">${w.term.map(t=>t[0]).join(' / ')}</div>
     <h2>${esc(PARTS[d][0])}</h2>
@@ -311,8 +313,8 @@ function vDay(wi,d){
     ${at ? `<div class="doneat">${esc(fmtWhen(at))} 완료</div>` : ''}
   </div>
   <div class="pager">
-    <button ${prev?`data-go="day" data-w="${wi}" data-d="${prev}" data-dir="l"`:'disabled'}>← ${prev||''}요일</button>
-    <button ${next?`data-go="day" data-w="${wi}" data-d="${next}"`:'disabled'}>${next||''}요일 →</button>
+    <button ${prev ? `data-go="day" data-w="${wi}" data-d="${prev}" data-dir="l"` : 'disabled'}>← ${prev ? slotNo(prev) + '회차' : ''}</button>
+    <button ${next2 ? `data-go="day" data-w="${wi}" data-d="${next2}"` : 'disabled'}>${next2 ? slotNo(next2) + '회차' : ''} →</button>
   </div>`;
 }
 function vRules(){
@@ -430,9 +432,9 @@ function bindSwipe(el){
     if(Math.abs(dx)<62||Math.abs(dy)>50)return;
     const cur=state.stack[state.stack.length-1];
     if(cur.v!=='day')return;
-    const i=DAYS.indexOf(cur.d);
-    if(dx<0&&i<6){state.stack.pop();push({v:'day',w:cur.w,d:DAYS[i+1]},'fwd')}
-    if(dx>0&&i>1){state.stack.pop();push({v:'day',w:cur.w,d:DAYS[i-1]},'back')}
+    const i=TRAINING_DAYS.indexOf(cur.d);
+    if(dx<0&&i<5){state.stack.pop();push({v:'day',w:cur.w,d:TRAINING_DAYS[i+1]},'fwd')}
+    if(dx>0&&i>0){state.stack.pop();push({v:'day',w:cur.w,d:TRAINING_DAYS[i-1]},'back')}
   },{passive:true});
 }
 function bindRM(root){
@@ -472,7 +474,7 @@ function bindRM(root){
     state.rm = Object.assign({}, RM_BASE, r.data.rm);
     state.scaleOn = r.data.scaleOn;
     store.save();
-    say(`${Object.keys(r.data.done).length}개 세션을 불러왔다.`);
+    say(`${Object.keys(r.data.done).length}개 회차를 불러왔다.`);
   });
 
   root.querySelector('#resetBtn').addEventListener('click', () => {
