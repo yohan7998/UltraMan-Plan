@@ -186,7 +186,8 @@ function vHome() {
 
   <div class="status">
     <div id="silhouette" data-stage>${silhouetteSVG(pr.count)}</div>
-    <div class="st-name"><b>${st.level}단계</b><span>${esc(st.name)}</span></div>
+    <div class="st-name"><b>${esc(st.rank)}</b><i>${st.level}단계</i></div>
+    <div class="st-sub">${esc(st.name)}</div>
     <div class="st-bar"><i style="width:${pr.pct * 100}%"></i></div>
     <div class="st-num"><b>${pr.count}</b><span>/ ${pr.total}</span><em>${pctTxt}%</em></div>
     ${last && last.at ? `<div class="st-last">마지막 훈련 ${fmtWhen(last.at)}</div>` : ''}

@@ -278,9 +278,11 @@ img{display:block;max-width:100%}
   border:1px solid rgba(0,0,0,.08);border-radius:14px;text-align:center}
 #silhouette{display:flex;justify-content:center;min-height:150px}
 #silhouette svg{width:120px;height:140px}
-.st-name{margin-top:10px;display:flex;gap:8px;justify-content:center;align-items:baseline}
-.st-name b{font-size:15px}
-.st-name span{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.st-name{margin-top:10px;display:flex;gap:7px;justify-content:center;align-items:center}
+.st-name b{font-size:20px;font-weight:900;letter-spacing:-.02em}
+.st-name i{font-style:normal;font-size:10.5px;font-weight:700;color:var(--rust);
+  border:1px solid var(--rust);border-radius:4px;padding:1px 5px}
+.st-sub{margin-top:3px;font-size:11.5px;color:var(--muted)}
 .st-bar{margin:12px 0 8px;height:7px;border-radius:4px;background:rgba(0,0,0,.1);overflow:hidden}
 .st-bar i{display:block;height:100%;background:var(--rust);transition:width .45s ease}
 .st-num{display:flex;gap:5px;justify-content:center;align-items:baseline;font-variant-numeric:tabular-nums}
@@ -315,7 +317,8 @@ img{display:block;max-width:100%}
   border-radius:9px;background:rgba(0,0,0,.04);font-size:13.5px}
 .sg-l{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center;
   border-radius:50%;background:rgba(0,0,0,.12);font-size:11px;font-weight:800}
-.sg b{flex:1;font-weight:700}
+.sg b{font-weight:700}
+.sg-n{flex:1;text-align:left;padding-left:6px;font-size:11px;color:var(--muted)}
 .sg-r{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .sg.past{opacity:.55}
 .sg.on{background:rgba(140,47,30,.12);outline:1.5px solid var(--rust)}

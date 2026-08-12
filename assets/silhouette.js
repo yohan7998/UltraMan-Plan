@@ -63,7 +63,7 @@ function aura(p, uid) {
     d += ` Q${P(qx, qy)} ${P(x, y)}`;
   }
   d += ` L${P(cx + rx * 0.5, cy + ry * 0.55)} Z`;
-  return `<path d="${d}" fill="url(#au${uid})" opacity="${(0.18 + p * 0.62).toFixed(2)}"/>`;
+  return `<path d="${d}" fill="url(#au${uid})" opacity="${(0.34 + p * 0.66).toFixed(2)}"/>`;
 }
 
 /* 불티 — 현재 단계에서 완료한 세션 수. 한 세션 = 한 칸.
