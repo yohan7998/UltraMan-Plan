@@ -375,12 +375,13 @@ function html(){
   return '';
 }
 let busy=false;
-function paint(dir){
+function paint(dir,restoreScroll){
   const old=stack.querySelector('.view');
   const el=document.createElement('div');
   el.className='view '+(dir==='back'?'enter-l':dir==='none'?'':'enter-r');
   el.innerHTML=html();
   stack.appendChild(el);
+  if(typeof restoreScroll==='number') el.scrollTop=restoreScroll;
   if(old){old.className='view '+(dir==='back'?'exit-r':'exit-l');busy=true;setTimeout(()=>{old.remove();busy=false},300);}
   renderNav();
   if(state.stack[state.stack.length-1].v==='rm') bindRM(el);
@@ -407,8 +408,10 @@ document.addEventListener('click',e=>{
   if(th){openSheet(th.dataset.ex,th.dataset.tempo||'');return}
   const dn=e.target.closest('[data-done]');
   if(dn&&!busy){
+    const curView=stack.querySelector('.view');
+    const sc=curView?curView.scrollTop:0;
     toggleDone(Number(dn.dataset.done));
-    paint('none');
+    paint('none',sc);
     return;}
   const g=e.target.closest('[data-go]');
   if(g&&!busy){const v=g.dataset.go;
