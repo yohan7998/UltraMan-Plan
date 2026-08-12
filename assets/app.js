@@ -11,6 +11,7 @@ const state={stack:[{v:"home"}],lastWeek:0,done:{},rm:Object.assign({},RM_BASE),
 
 const KEY = 'geoinhwa:v3';
 const KEY_V2 = 'geoinhwa:v2';
+const KEY_BAK = 'geoinhwa:v3.bak';
 const PROBE = 'geoinhwa:probe';
 let storageOk = true;
 
@@ -18,6 +19,13 @@ function showStorageWarning(msg) {
   const el = document.getElementById('warn');
   el.textContent = msg || '⚠ 이 브라우저에서는 기록이 저장되지 않습니다. (사파리 시크릿 모드 등) 기록이 남지 않으니 확인 후 사용하세요.';
   el.hidden = false;
+}
+
+/* 손상된 v3 원본을 다음 저장에 덮어써 사라지기 전에 백업해 둔다.
+   실패해도 경고 표시 자체는 계속되어야 하므로 별도 try/catch로 감싼다 */
+function backupCorruptRaw(raw) {
+  try { localStorage.setItem(KEY_BAK, raw); }
+  catch (e) { console.warn('손상된 기록 백업 실패:', e); }
 }
 
 /* 실제로 쓰고 되읽어 확인한다. 존재 여부만 보면 시크릿 모드를 못 잡는다 */
@@ -46,10 +54,21 @@ const store = {
 
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      try { applyState(JSON.parse(raw)); }
+      let parsed;
+      try { parsed = JSON.parse(raw); }
       catch (e) {
         console.warn('v3 기록 파싱 실패:', e);
+        backupCorruptRaw(raw);
         showStorageWarning('⚠ 저장된 기록을 읽을 수 없습니다. 1RM 화면의 기록 불러오기로 복원하세요.');
+        return;
+      }
+      const r = validateBackup(parsed);
+      if (r.ok) {
+        applyState(r.data);
+      } else {
+        console.warn('v3 기록 검증 실패:', r.reason);
+        backupCorruptRaw(raw);
+        showStorageWarning(`⚠ 저장된 기록을 읽을 수 없습니다 (${r.reason}). 1RM 화면의 기록 불러오기로 복원하세요.`);
       }
       return;
     }
@@ -160,6 +179,7 @@ function vHome() {
     <div class="stamp">6주 블록<b>선형 주기화</b></div>
     <div class="eyebrow">TRAINING ORDER</div>
     <h1>거인화<br><em>프로그램</em></h1>
+    <p class="sub">주 6일 · 일요일 휴식. 1주차는 느린 템포로 자세를 만들고, 6주차에 최고 중량 1회로 마무리한다.</p>
   </div>
 
   <div class="status">
@@ -386,10 +406,9 @@ document.addEventListener('click',e=>{
   const th=e.target.closest('[data-ex]');
   if(th){openSheet(th.dataset.ex,th.dataset.tempo||'');return}
   const dn=e.target.closest('[data-done]');
-  if(dn){
-    const on=toggleDone(Number(dn.dataset.done));
-    dn.classList.toggle('on',on);
-    dn.textContent=on?'훈련 완료됨 · 다시 누르면 해제':'오늘 훈련 완료로 표시';
+  if(dn&&!busy){
+    toggleDone(Number(dn.dataset.done));
+    paint('none');
     return;}
   const g=e.target.closest('[data-go]');
   if(g&&!busy){const v=g.dataset.go;
@@ -451,7 +470,6 @@ function bindRM(root){
     state.scaleOn = r.data.scaleOn;
     store.save();
     say(`${Object.keys(r.data.done).length}개 세션을 불러왔다.`);
-    replaceTo({ v: 'home' });
   });
 
   root.querySelector('#resetBtn').addEventListener('click', () => {
