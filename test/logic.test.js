@@ -191,3 +191,16 @@ test('validateBackup은 빠진 필드를 기본값으로 채운다', () => {
   assert.deepEqual(r.data.rm, {});
   assert.equal(r.data.scaleOn, false);
 });
+
+test('STAGES의 모든 단계에 계급이 붙어 있다', () => {
+  const ranks = STAGES.map(s => s.rank);
+  assert.deepEqual(ranks, [
+    '훈련병', '신병', '정예병', '분대장', '특무병', '반장', '부단장', '단장'
+  ]);
+});
+
+test('stageOf는 계급을 함께 준다', () => {
+  assert.equal(stageOf(0).rank, '훈련병');
+  assert.equal(stageOf(13).rank, '분대장');
+  assert.equal(stageOf(36).rank, '단장');
+});
