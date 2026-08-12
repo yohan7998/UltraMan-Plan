@@ -1,10 +1,10 @@
-import { IMG } from './images.js?v=3';
-import { PARTS, WEEKS, RULES, RM_BASE, RM_LIFT, EXMETA } from './data.js?v=3';
+import { IMG } from './images.js?v=4';
+import { PARTS, WEEKS, RULES, RM_BASE, RM_LIFT, EXMETA } from './data.js?v=4';
 import {
   TRAINING_DAYS, sessionIndex, sessionAt, progress, nextSession, backlog,
   weekProgress, stageOf, lastDone, migrateV2, validateBackup
-} from './logic.js?v=3';
-import { silhouetteSVG, stageSheetHTML } from './silhouette.js?v=3';
+} from './logic.js?v=4';
+import { silhouetteSVG, stageSheetHTML } from './silhouette.js?v=4';
 
 const state={stack:[{v:"home"}],lastWeek:0,done:{},rm:Object.assign({},RM_BASE),scaleOn:false};
 

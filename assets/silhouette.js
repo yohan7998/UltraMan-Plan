@@ -1,4 +1,4 @@
-import { STAGES, stageOf, TOTAL_SESSIONS } from './logic.js?v=3';
+import { STAGES, stageOf, TOTAL_SESSIONS } from './logic.js?v=4';
 
 /* 화면 전환 중 두 실루엣이 300ms 겹친다. 그라디언트 id가 중복되면
    들어오는 쪽이 나가는 쪽의 정의를 참조하므로 호출마다 고유 id를 만든다. */
