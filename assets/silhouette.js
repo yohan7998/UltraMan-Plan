@@ -78,7 +78,7 @@ function sparks(count, L) {
   for (let i = 0; i < slots; i++) {
     const a = -Math.PI * 0.86 + (slots === 1 ? 0.5 : i / (slots - 1)) * Math.PI * 1.72;
     const r = 54;
-    const x = 60 + Math.cos(a) * r * 0.76, y = 88 + Math.sin(a) * r;
+    const x = 60 + Math.cos(a) * r * 0.76, y = 86 + Math.sin(a) * r * 0.88;
     const s = i < filled ? 3.6 : 2.2;
     const d = `M${P(x, y - s)} L${P(x + s * 0.7, y)} L${P(x, y + s)} L${P(x - s * 0.7, y)} Z`;
     if (i < filled) on += d; else off += d;
