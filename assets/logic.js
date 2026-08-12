@@ -111,3 +111,33 @@ export function migrateV2(v2) {
   out.scaleOn = !!v2.scaleOn;
   return out;
 }
+
+/* 백업 JSON을 검증하고 정규화한다. 실패해도 기존 state는 건드리지 않는다 */
+export function validateBackup(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return { ok: false, reason: '객체가 아닙니다' };
+  if (o.v !== 3) return { ok: false, reason: `지원하지 않는 버전입니다 (v${o.v})` };
+  if (!o.done || typeof o.done !== 'object' || Array.isArray(o.done)) {
+    return { ok: false, reason: 'done 항목이 없거나 형태가 다릅니다' };
+  }
+
+  const done = {};
+  for (const k of Object.keys(o.done)) {
+    const n = Number(k);
+    if (!Number.isInteger(n) || n < 0 || n >= TOTAL_SESSIONS) continue;
+    const e = o.done[k] || {};
+    done[String(n)] = {
+      at: typeof e.at === 'number' ? e.at : null,
+      seq: typeof e.seq === 'number' ? e.seq : null
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      v: 3,
+      done,
+      rm: (o.rm && typeof o.rm === 'object' && !Array.isArray(o.rm)) ? Object.assign({}, o.rm) : {},
+      scaleOn: !!o.scaleOn
+    }
+  };
+}

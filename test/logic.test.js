@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   TRAINING_DAYS, TOTAL_SESSIONS, sessionIndex, sessionAt,
   progress, nextSession, backlog, weekProgress, STAGES, stageOf, lastDone,
-  migrateV2
+  migrateV2, validateBackup
 } from '../assets/logic.js';
 
 test('훈련일은 월~토 6일이고 총 36세션이다', () => {
@@ -163,4 +163,31 @@ test('migrateV2는 손상된 입력에 빈 상태를 준다', () => {
 test('migrateV2는 알 수 없는 키를 버린다', () => {
   const out = migrateV2({ done: { '0-일': true, '9-월': true, '쓰레기': true } });
   assert.deepEqual(out.done, {}, '일요일·7주차 이상·형식 불명은 모두 버린다');
+});
+
+test('validateBackup은 정상 백업을 통과시킨다', () => {
+  const good = { v: 3, done: { '0': { at: 1, seq: 1 } }, rm: { '스쿼트': 100 }, scaleOn: true };
+  const r = validateBackup(good);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.data.done, good.done);
+});
+
+test('validateBackup은 형태가 아닌 것을 거른다', () => {
+  assert.equal(validateBackup(null).ok, false);
+  assert.equal(validateBackup('x').ok, false);
+  assert.equal(validateBackup({ v: 2, done: {} }).ok, false, '버전이 다르면 거부');
+  assert.equal(validateBackup({ v: 3 }).ok, false, 'done이 없으면 거부');
+  assert.equal(validateBackup({ v: 3, done: 'x' }).ok, false);
+});
+
+test('validateBackup은 범위 밖 세션 키를 거른다', () => {
+  const r = validateBackup({ v: 3, done: { '0': {}, '99': {}, 'zz': {} } });
+  assert.equal(r.ok, true);
+  assert.deepEqual(Object.keys(r.data.done), ['0'], '유효한 키만 남긴다');
+});
+
+test('validateBackup은 빠진 필드를 기본값으로 채운다', () => {
+  const r = validateBackup({ v: 3, done: {} });
+  assert.deepEqual(r.data.rm, {});
+  assert.equal(r.data.scaleOn, false);
 });

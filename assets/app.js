@@ -2,7 +2,7 @@ import { IMG } from './images.js';
 import { PARTS, WEEKS, RULES, RM_BASE, RM_LIFT, EXMETA } from './data.js';
 import {
   sessionIndex, sessionAt, progress, nextSession, backlog,
-  weekProgress, stageOf, lastDone, migrateV2
+  weekProgress, stageOf, lastDone, migrateV2, validateBackup
 } from './logic.js';
 import { silhouetteSVG, stageSheetHTML } from './silhouette.js';
 
@@ -326,6 +326,16 @@ function vRM(){
     <div class="pcts" data-pcts="${l}">
       ${pcts.map(p=>`<div class="pct"><i>${Math.round(p*100)}%</i><b>${fmt(floor25(state.rm[l]*p))}</b></div>`).join('')}
     </div></div>`).join('')}
+  <div class="card"><h3>기록 관리</h3>
+    <p class="hint">브라우저 데이터를 지우면 훈련 기록이 사라진다. 주기적으로 내보내 두면 복구할 수 있다.</p>
+    <div class="btnrow">
+      <button class="mbtn" id="expBtn">기록 내보내기</button>
+      <button class="mbtn" id="impBtn">기록 불러오기</button>
+    </div>
+    <textarea id="bkText" class="bk" rows="4" placeholder="여기에 백업 JSON을 붙여넣고 불러오기를 누른다" spellcheck="false"></textarea>
+    <div id="bkMsg" class="bkmsg"></div>
+    <button class="mbtn danger" id="resetBtn">전체 초기화</button>
+  </div>
   <p class="disc" style="padding:0 16px 8px">환산값은 참고용 비례 계산이다. 시트의 세부 수식(보조 종목 −5kg/−10kg 등)과 어긋날 수 있으니, 애매하면 수칙 11번대로 낮은 쪽을 택한다.</p>`;
 }
 
@@ -417,6 +427,41 @@ function bindRM(root){
   });
   const tg=root.querySelector('#scaleTg');
   tg.addEventListener('click',()=>{state.scaleOn=!state.scaleOn;tg.classList.toggle('on',state.scaleOn);store.save()});
+
+  const ta = root.querySelector('#bkText');
+  const msg = root.querySelector('#bkMsg');
+  const say = (t, bad) => { msg.textContent = t; msg.className = 'bkmsg' + (bad ? ' bad' : ' good'); };
+
+  root.querySelector('#expBtn').addEventListener('click', () => {
+    ta.value = JSON.stringify({ v: 3, done: state.done, rm: state.rm, scaleOn: state.scaleOn });
+    ta.select();
+    say('내보냈다. 이 텍스트를 안전한 곳에 복사해 둘 것.');
+  });
+
+  root.querySelector('#impBtn').addEventListener('click', () => {
+    let parsed;
+    try { parsed = JSON.parse(ta.value); }
+    catch (e) { say('JSON을 읽을 수 없다: ' + e.message, true); return; }
+
+    const r = validateBackup(parsed);
+    if (!r.ok) { say('불러오지 못했다: ' + r.reason, true); return; }
+
+    state.done = r.data.done;
+    state.rm = Object.assign({}, RM_BASE, r.data.rm);
+    state.scaleOn = r.data.scaleOn;
+    store.save();
+    say(`${Object.keys(r.data.done).length}개 세션을 불러왔다.`);
+    replaceTo({ v: 'home' });
+  });
+
+  root.querySelector('#resetBtn').addEventListener('click', () => {
+    if (!confirm('훈련 기록과 1RM을 전부 지운다. 되돌릴 수 없다. 진행할까?')) return;
+    state.done = {};
+    state.rm = Object.assign({}, RM_BASE);
+    state.scaleOn = false;
+    store.save();
+    replaceTo({ v: 'home' });
+  });
 }
 
 const sheet=document.getElementById('sheet'),sheetIn=document.getElementById('sheetIn');
