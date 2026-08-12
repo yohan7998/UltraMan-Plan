@@ -100,10 +100,14 @@ SESSIONS[35] = { w: 5, day: "토" }   6주차 하체후면/팔
 index.html            껍데기 + CSS                      ~30KB
 assets/data.js        WEEKS / RULES / RM / EXMETA       ~25KB
 assets/images.js      IMG base64                        ~1.13MB (이후 수정 없음)
-assets/logic.js       순수 계산 함수 (DOM 의존 없음)      ~4KB
+assets/logic.js       순수 계산 함수 (DOM 의존 없음)      ~5KB
+assets/silhouette.js  거인화 실루엣 SVG 조립              ~4KB
 assets/app.js         상태 · 저장 · 렌더링 · 이벤트       ~35KB
 test/logic.test.js    logic.js 테스트
+package.json          {"type":"module"} — Node가 ESM 인식
 ```
+
+실루엣을 별도 파일로 두는 이유는 SVG 조립이 렌더링 로직과 성격이 다르고, 형태를 다듬을 때 `app.js`를 건드리지 않아도 되기 때문이다.
 
 ES 모듈로 작성한다. `index.html`에서 `<script type="module" src="assets/app.js">` 하나만 로드하고 나머지는 import로 연결한다. Node가 `logic.js`를 그대로 import할 수 있어 브라우저 없이 테스트할 수 있다.
 
@@ -155,6 +159,7 @@ CSS는 `index.html`에 인라인으로 남긴다(약 10KB, 분리 실익 없음)
 
 `lastDone`은 `seq`를 기준으로 삼는다. 마이그레이션된 기록처럼 모든 항목의 `seq`가 `null`이면 순서를 알 수 없으므로 가장 큰 세션 번호를 대신 쓰고, `at`은 `null`로 반환한다.
 | `migrateV2(v2obj)` | v3 상태 객체 |
+| `validateBackup(obj)` | `{ ok: true, data }` 또는 `{ ok: false, reason }` (11절 불러오기용) |
 
 ### backlog 정의
 

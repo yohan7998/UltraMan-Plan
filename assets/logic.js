@@ -1,0 +1,143 @@
+/* 순수 계산 함수만 둔다. DOM·localStorage·Date.now()를 쓰지 않는다.
+   브라우저와 Node 양쪽에서 그대로 import된다. */
+
+export const TRAINING_DAYS = ['월', '화', '수', '목', '금', '토'];
+export const TOTAL_SESSIONS = TRAINING_DAYS.length * 6;
+
+export function sessionIndex(w, day) {
+  const d = TRAINING_DAYS.indexOf(day);
+  if (!Number.isInteger(w) || w < 0 || w > 5 || d < 0) return -1;
+  return w * TRAINING_DAYS.length + d;
+}
+
+export function sessionAt(i) {
+  if (!Number.isInteger(i) || i < 0 || i >= TOTAL_SESSIONS) return null;
+  return {
+    w: Math.floor(i / TRAINING_DAYS.length),
+    day: TRAINING_DAYS[i % TRAINING_DAYS.length]
+  };
+}
+
+/* done에 순번 i가 있는가. 프로토타입 체인을 타지 않게 hasOwnProperty로 본다 */
+const has = (done, i) => Object.prototype.hasOwnProperty.call(done, String(i));
+
+/* done의 유효한 순번만 오름차순으로 */
+function doneIndices(done) {
+  if (!done || typeof done !== 'object') return [];
+  return Object.keys(done)
+    .filter(key => String(Number(key)) === key)
+    .map(Number)
+    .filter(n => Number.isInteger(n) && n >= 0 && n < TOTAL_SESSIONS)
+    .sort((a, b) => a - b);
+}
+
+export function progress(done) {
+  const count = doneIndices(done).length;
+  return { count, total: TOTAL_SESSIONS, pct: count / TOTAL_SESSIONS };
+}
+
+export function nextSession(done) {
+  for (let i = 0; i < TOTAL_SESSIONS; i++) if (!has(done, i)) return i;
+  return null;
+}
+
+/* 완료한 것 중 가장 뒤 순번을 지나쳤는데 아직 안 한 것 = 밀린 훈련 */
+export function backlog(done) {
+  const idx = doneIndices(done);
+  if (idx.length === 0) return [];
+  const maxDone = idx[idx.length - 1];
+  const out = [];
+  for (let i = 0; i < maxDone; i++) if (!has(done, i)) out.push(i);
+  return out;
+}
+
+export function weekProgress(done) {
+  const per = TRAINING_DAYS.length;
+  return Array.from({ length: 6 }, (_, w) => {
+    let c = 0;
+    for (let d = 0; d < per; d++) if (has(done, w * per + d)) c++;
+    return c / per;
+  });
+}
+
+export const STAGES = [
+  { level: 0, name: '인간',              from: 0,  to: 0  },
+  { level: 1, name: '각성',              from: 1,  to: 6  },
+  { level: 2, name: '경화',              from: 7,  to: 12 },
+  { level: 3, name: '변이',              from: 13, to: 18 },
+  { level: 4, name: '거인화',            from: 19, to: 24 },
+  { level: 5, name: '초대형',            from: 25, to: 30 },
+  { level: 6, name: '임계',              from: 31, to: 35 },
+  { level: 7, name: '울트라맨 · 완전체',  from: 36, to: 36 }
+];
+
+export function stageOf(count) {
+  return STAGES.find(s => count >= s.from && count <= s.to) || STAGES[0];
+}
+
+export function lastDone(done) {
+  const idx = doneIndices(done);
+  if (idx.length === 0) return null;
+  let best = null;
+  for (const i of idx) {
+    const seq = done[String(i)] && done[String(i)].seq;
+    if (typeof seq === 'number' && (best === null || seq > best.seq)) {
+      best = { seq, index: i, at: done[String(i)].at ?? null };
+    }
+  }
+  /* seq가 하나도 없으면(마이그레이션된 기록) 순서를 알 수 없으므로
+     가장 큰 순번으로 대신하고 시각은 알 수 없음으로 둔다 */
+  if (!best) return { index: idx[idx.length - 1], at: null };
+  return { index: best.index, at: best.at };
+}
+
+/* 구 스키마: { done: { "0-월": true }, rm, scaleOn }
+   완료 시각과 순서를 알 수 없으므로 null로 둔다 */
+export function migrateV2(v2) {
+  const out = { v: 3, done: {}, rm: {}, scaleOn: false };
+  if (!v2 || typeof v2 !== 'object') return out;
+
+  const src = (v2.done && typeof v2.done === 'object') ? v2.done : {};
+  for (const key of Object.keys(src)) {
+    if (!src[key]) continue;
+    const m = /^(\d+)-(.+)$/.exec(key);
+    if (!m) continue;
+    const i = sessionIndex(Number(m[1]), m[2]);
+    if (i < 0) continue;
+    out.done[String(i)] = { at: null, seq: null };
+  }
+
+  if (v2.rm && typeof v2.rm === 'object') out.rm = Object.assign({}, v2.rm);
+  out.scaleOn = !!v2.scaleOn;
+  return out;
+}
+
+/* 백업 JSON을 검증하고 정규화한다. 실패해도 기존 state는 건드리지 않는다 */
+export function validateBackup(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return { ok: false, reason: '객체가 아닙니다' };
+  if (o.v !== 3) return { ok: false, reason: `지원하지 않는 버전입니다 (v${o.v})` };
+  if (!o.done || typeof o.done !== 'object' || Array.isArray(o.done)) {
+    return { ok: false, reason: 'done 항목이 없거나 형태가 다릅니다' };
+  }
+
+  const done = {};
+  for (const k of Object.keys(o.done)) {
+    const n = Number(k);
+    if (!Number.isInteger(n) || n < 0 || n >= TOTAL_SESSIONS) continue;
+    const e = o.done[k] || {};
+    done[String(n)] = {
+      at: typeof e.at === 'number' ? e.at : null,
+      seq: typeof e.seq === 'number' ? e.seq : null
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      v: 3,
+      done,
+      rm: (o.rm && typeof o.rm === 'object' && !Array.isArray(o.rm)) ? Object.assign({}, o.rm) : {},
+      scaleOn: !!o.scaleOn
+    }
+  };
+}
